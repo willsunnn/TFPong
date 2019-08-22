@@ -1,0 +1,16 @@
+body {
+    background: #E0DDD5;
+    color: #000000;
+}
+
+.nav a {
+  float: left;
+  color: #ffffff;
+  text-align: center;
+  padding: 14px
+}
+
+.nav a:hover {
+  background-color: #B5B1A8;
+  color: #F8F2FF;
+}

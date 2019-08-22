@@ -1,0 +1,8 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <h1>Play Pong</h1>
+    <button onclick="start()">Start</button>
+    <canvas id="pong" width="800" height="450"></canvas>
+    <script type="text/javascript" src="{{url_for('static', filename='pong.js')}}"></script>
+{% endblock %}
