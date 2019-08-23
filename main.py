@@ -20,9 +20,21 @@ def play():
     return render_template("game.html", title="Pong")
 
 
-@app.route('/run', methods=["upper"])
-def func():
-    if request.method == "upper":
-        return "Hello World".upper()
-    else:
-        return "Hello World"
+@app.route('/tfrequest')
+def process_request():
+    state = list(map(lambda s: float(s), request.args.get('state').split(",")))
+    return str(send_to_algorithm(*state))
+
+
+def send_to_algorithm(ball_x, ball_y, ball_vx, ball_vy, player_y, paddle_x, paddle_y, paddle_height, canvas_width, canvas_height):
+    ball_radius = 10
+    if ball_y - ball_radius > paddle_y + paddle_height / 2:
+        return 1
+    elif ball_y + ball_radius < paddle_y - paddle_height / 2:
+        return -1
+    return 0
+
+
+@app.route('/tfteach')
+def recieve_data():
+    pass

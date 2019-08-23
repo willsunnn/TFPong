@@ -162,8 +162,8 @@ class Game {
 
     update(){
         this.ball.move();
+        this.updateComputerMovement(this.getState());
         this.leftPaddle.move(this.playerDirection, 0, this.canvas.height);
-        this.computerDirection = this.getComputerMovement(this.getState());
         this.rightPaddle.move(this.computerDirection, 0, this.canvas.height);
         this.checkCollisions();
     }
@@ -219,21 +219,17 @@ class Game {
     }
 
     getState(){
-        return [this.ball.x, this.ball.y, this.ball.vx, this.ball.vy, this.ball.radius, this.leftPaddle.x, this.leftPaddle.y, this.leftPaddle.width, this.leftPaddle.height, this.rightPaddle.x, this.rightPaddle.y, this.rightPaddle.width, this.rightPaddle.height, this.canvas.width, this.canvas.height];
+        return [this.ball.x, this.ball.y, this.ball.vx, this.ball.vy, this.leftPaddle.y, this.rightPaddle.x - this.rightPaddle.width/2, this.rightPaddle.y, this.rightPaddle.height, this.canvas.width, this.canvas.height].map(Math.round);
     }
 
-    getComputerMovement(state){
-        let [ballX, ballY, ballVX, ballRadius, ballVY, playerX, playerY, playerWidth, playerHeight, computerX, computerY, computerWidth, computerHeight, canvasWidth, canvasHeight] = state;
-        //console.log(state);
-        if(ballY - ballRadius > computerY + computerHeight/2){
-            return 0.5;
-        }
-        else if (ballY + ballRadius < computerY - computerHeight/2){
-            return -0.5;
-        }
-        else{
-            return 0;
-        }
+    updateComputerMovement(state){
+        var pong = this
+        var url = "http://127.0.0.1:5000/tfrequest?state="+state.join(",");
+        fetch(url).then(function(response){
+            response.text().then(function(text){
+                pong.computerDirection = parseFloat(text)
+            })
+        })
     }
 
     keyPressed(key){
