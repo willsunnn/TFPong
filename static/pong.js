@@ -27,7 +27,7 @@ class Ball {
     }
 
     containsPoint(x, y){
-        return Math.sqrt(Math.pow(x-this.x, 2) + Math.pow(y-this.y, 2)) < this.radius;
+        return Math.sqrt(Math.pow(x-this.x, 2) + Math.pow(y-this.y, 2)) <= this.radius;
     }
 }
 
@@ -57,25 +57,12 @@ class Paddle {
         else{
             var x = this.x - this.width/2;
         }
+        var yVals = [this.y-this.height/2, this.y, this.y+this.height/2];
 
-        // if paddle end points are in ball
-        if(ball.containsPoint(x, this.y+this.height/2)){
-            return true;
+        function isInBall(y1){
+            return ball.containsPoint(x, y1);
         }
-        if(ball.containsPoint(x, this.y-this.height/2)){
-            return true;
-        }
-
-        // if ball center's y in line, and ball center x is past paddle x
-        if(ball.y < this.y - this.height/2 || ball.y > this.y + this.height/2){
-            return false;
-        }
-        if(side=="left"){
-            return ball.x-ball.radius <= this.x - this.width/2 && ball.x >= this.x;
-        }
-        else{
-            return ball.x+ball.radius >= this.x + this.width/2 && ball.x <= this.x;
-        }
+        return yVals.some(isInBall);
     }
 }
 
@@ -85,10 +72,10 @@ class Game {
         this.context = this.canvas.getContext("2d");
 
         this.running = false;
-        this.playerDirection = 0;
-        this.computerDirection = 0;
-        this.playerScore = 0;
-        this.computerScore = 0;
+        this.leftDirection = 0;
+        this.rightDirection = 0;
+        this.leftScore = 0;
+        this.rightScore = 0;
 
         this.ball = new Ball(this.canvas.width/2, this.canvas.height/2, 11, 3);
         this.leftPaddle = new Paddle(50, this.canvas.height/2, 5, this.canvas.height/15);
@@ -96,6 +83,8 @@ class Game {
 
         this.lastUpdate = Date.now();
         this.period = 1000 / 30;
+
+        this.controller = "player";
     }
 
     drawRect(x, y, width, height, color) {
@@ -129,11 +118,11 @@ class Game {
 
     score(paddle){
         this.reset(paddle)
-        if (paddle=="player"){
-            this.playerScore +=1
+        if (paddle=="left"){
+            this.leftScore +=1
         }
         else{
-            this.computerScore +=1
+            this.rightScore +=1
         }
     }
 
@@ -141,7 +130,7 @@ class Game {
         this.ball.x = this.canvas.width/2;
         this.ball.y = this.canvas.height/2;
         var direction = 2*(Math.random()-0.5) * Math.PI/6;
-        if(paddle=="player"){
+        if(paddle=="left"){
             this.ball.setDirection(direction);
         }
         else{
@@ -157,24 +146,24 @@ class Game {
         this.drawPaddle(this.leftPaddle);
         this.drawPaddle(this.rightPaddle);
         this.drawBall(this.ball);
-        this.writeScores(this.playerScore, this.computerScore)
+        this.writeScores(this.leftScore, this.rightScore)
     }
 
     update(){
         this.ball.move();
         this.updateComputerMovement(this.getState());
-        this.leftPaddle.move(this.playerDirection, 0, this.canvas.height);
-        this.rightPaddle.move(this.computerDirection, 0, this.canvas.height);
+        this.leftPaddle.move(this.leftDirection, 0, this.canvas.height);
+        this.rightPaddle.move(this.rightDirection, 0, this.canvas.height);
         this.checkCollisions();
     }
 
     checkCollisions(){
         // point score conditions
         if(this.ball.x - this.ball.radius > this.canvas.width){
-            this.score("player");
+            this.score("left");
         }
         if(this.ball.x + this.ball.radius < 0){
-            this.score("computer");
+            this.score("right");
         }
 
         // top/bottom collisions
@@ -219,17 +208,34 @@ class Game {
     }
 
     getState(){
-        return [this.ball.x, this.ball.y, this.ball.vx, this.ball.vy, this.leftPaddle.y, this.rightPaddle.x - this.rightPaddle.width/2, this.rightPaddle.y, this.rightPaddle.height, this.canvas.width, this.canvas.height].map(Math.round);
+        return [this.ball.x, this.ball.y, this.ball.vx, this.ball.vy, this.leftPaddle.x, this.leftPaddle.y, this.leftPaddle.width, this.leftPaddle.height, this.rightPaddle.x, this.rightPaddle.y, this.rightPaddle.width,this.rightPaddle.height, this.canvas.width, this.canvas.height].map(Math.round);
     }
 
     updateComputerMovement(state){
+        this.updateRightMovement(state);
+        if(this.controller=="computer"){this.updateLeftMovement();}
+    }
+
+    updateRightMovement(state){
         var pong = this
-        var url = "http://127.0.0.1:5000/tfrequest?state="+state.join(",");
+        var url = "/tfrequest?state="+state.join(",");
         fetch(url).then(function(response){
             response.text().then(function(text){
-                pong.computerDirection = parseFloat(text)
+                pong.rightDirection = parseFloat(text);
             })
         })
+    }
+
+    updateLeftMovement(){
+        if (this.ball.y - this.ball.radius > this.leftPaddle.y + this.leftPaddle.height / 2){
+            this.leftDirection = 1;
+        }
+        else if (this.ball.y - this.ball.radius < this.leftPaddle.y - this.leftPaddle.height / 2){
+            this.leftDirection = -1;
+        }
+        else{
+            this.leftDirection = 0
+        }
     }
 
     keyPressed(key){
@@ -237,20 +243,23 @@ class Game {
             this.running = true;
             start();
         }
-
-        if (key.keyCode === 38 || key.keyCode === 87) { // up or w
-            this.playerDirection = -1;
-        }
-        if (key.keyCode === 40 || key.keyCode === 83) { //down or d
-            this.playerDirection = 1;
-        }
         if (key.keyCode == 80) { // p
             this.running = !this.running;
+        }
+        if (this.controller == "player"){
+            if (key.keyCode === 38 || key.keyCode === 87) { // up or w
+                this.leftDirection = -1;
+            }
+            if (key.keyCode === 40 || key.keyCode === 83) { //down or d
+                this.leftDirection = 1;
+            }
         }
     }
 
     keyReleased(key){
-        this.playerDirection = 0;
+        if (this.controller == "player"){
+            this.leftDirection = 0;
+        }
     }
 }
 
@@ -263,6 +272,11 @@ function start(){
 function addListeners(game){
     document.addEventListener('keydown', (key) => game.keyPressed.call(game, key))
     document.addEventListener('keyup', (key) => game.keyReleased.call(game, key))
+}
+
+function updateController(){
+    var dropdown = document.getElementById("controller");
+    Pong.controller = (dropdown.options[dropdown.selectedIndex].value);
 }
 
 

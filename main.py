@@ -20,19 +20,30 @@ def play():
     return render_template("game.html", title="Pong")
 
 
+@app.route('/airequest')
+def pong_ai_algorithm():
+    state = list(map(lambda s: float(s), request.args.get('state').split(",")))
+
+    def simple_algorithm(ball_x, ball_y, ball_vx, ball_vy, player_x, player_y, player_width, player_height, paddle_x,
+                          paddle_y, paddle_width, paddle_height, canvas_width, canvas_height):
+        ball_radius = 10
+        if ball_y - ball_radius > paddle_y + paddle_height / 2:
+            return 1
+        elif ball_y + ball_radius < paddle_y - paddle_height / 2:
+            return -1
+        return 0
+    return str(simple_algorithm(*state))
+
+
 @app.route('/tfrequest')
 def process_request():
     state = list(map(lambda s: float(s), request.args.get('state').split(",")))
-    return str(send_to_algorithm(*state))
+    return str(send_to_algorithm(state))
 
 
-def send_to_algorithm(ball_x, ball_y, ball_vx, ball_vy, player_y, paddle_x, paddle_y, paddle_height, canvas_width, canvas_height):
-    ball_radius = 10
-    if ball_y - ball_radius > paddle_y + paddle_height / 2:
-        return 1
-    elif ball_y + ball_radius < paddle_y - paddle_height / 2:
-        return -1
-    return 0
+def send_to_algorithm(state):
+    from model import tf_pong_request
+    return tf_pong_request(state)
 
 
 @app.route('/tfteach')
