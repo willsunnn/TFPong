@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
+import random
 
 print(tf.__version__)
 checkpoint_path = "tf-models/"
@@ -20,7 +21,7 @@ class Model:
     @staticmethod
     def create_model():
         model = tf.keras.models.Sequential([
-            keras.layers.Dense(64, input_shape=(12,),activation=tf.nn.relu),
+            keras.layers.Dense(64, input_shape=[None, 12],activation=tf.nn.relu),
             keras.layers.Dense(16),
             keras.layers.Dense(3, activation=tf.nn.softmax)
         ])
@@ -51,19 +52,19 @@ class Model:
 
     @staticmethod
     def get_training_data(archive_data=True):
-        states = []
-        moves = []
+        data = []
         with open(training_data, 'r') as new_data, open(old_training_data, 'a') as old_data:
             for line in new_data:
                 if archive_data:
                     old_data.write(str(line))
                 game_state, player_move = line.split("; ")
-                states.append(Model.preprocess_data(Model.flip_state(map(lambda x: int(x), game_state.strip("[]").split(", ")))))
-                moves.append([int(player_move) + 1])      # player_move ranges from [-1,1], tf output ranges from [0,2]
+                game_state = Model.preprocess_data(Model.flip_state(map(lambda x: int(x), game_state.strip("[]").split(", "))))
+                player_move = [int(player_move) + 1]        # player_move ranges from [-1,1], tf output ranges from [0,2]
+                data.append([game_state, player_move])
         if archive_data:
             with open(training_data, 'w') as new_data:
                 new_data.truncate(0)
-        return states, moves
+        return data
 
     @staticmethod
     def flip_state(state):  # flips the game as the data being trained is from the opposite paddle's perspective
@@ -81,13 +82,19 @@ class Model:
                 paddle_y / canvas_height, paddle_width / canvas_width, paddle_height / canvas_height]]
 
     def train_model(self):
-        x_train, y_train = list(model.get_training_data(archive_data=False))
+        data = list(model.get_training_data(archive_data=False))
+        random.shuffle(data)
+        x_train, y_train = [], []
+        for pair in data:
+            x_train.append(pair[0])
+            y_train.append(pair[1])
+        x_train = np.array(x_train).reshape(-1, 1, 12)
+        y_train = np.array(y_train)
         print(np.shape(x_train))
-        print(np.shape(y_train))
-        history = self.model.fit(x=x_train, y=y_train, epochs=10, steps_per_epoch=10, verbose=1)
+        history = self.model.fit(x=x_train, y=y_train, epochs=10)
 
 
 if __name__ == "__main__":
-    model = Model.restore_model()
+    model = Model()
     model.train_model()
     model.save_model()
