@@ -243,6 +243,7 @@ class Game {
         }
         fetch(url).then(function(response){
             response.text().then(function(text){
+                console.log("algorithm returned: "+text);
                 pong.rightDirection = parseFloat(text);
             })
         })
@@ -304,15 +305,6 @@ function updateController(){
 function updateComputer(){
     var dropdown = document.getElementById("computer");
     Pong.computer = (dropdown.options[dropdown.selectedIndex].value);
-}
-
-function postData(){
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/tfteach", true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify({
-        "states": Pong.getState()
-    }));
 }
 
 

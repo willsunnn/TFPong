@@ -39,7 +39,9 @@ class Model:
         return self.model.summary()
 
     def predict(self, state):
-        predictions = self.model.predict([state])
+        state = Model.preprocess_data(state)
+        data = np.array([state])
+        predictions = self.model.predict(data)
         index = np.argmax(predictions[0])
         # index ranges from [0,2], our direction should range from [-1, 1]
         return index - 1
