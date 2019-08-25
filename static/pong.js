@@ -85,6 +85,9 @@ class Game {
         this.period = 1000 / 30;
 
         this.controller = "player";
+        this.computer = "basic-ai";
+
+        this.playerMoves = [];
     }
 
     drawRect(x, y, width, height, color) {
@@ -117,13 +120,23 @@ class Game {
     }
 
     score(paddle){
-        this.reset(paddle)
         if (paddle=="left"){
-            this.leftScore +=1
+            this.leftScore +=1;
+            this.sendData();
         }
         else{
-            this.rightScore +=1
+            this.rightScore +=1;
         }
+        console.log(this.playerMoves)
+        this.playerMoves = [];
+        this.reset(paddle);
+    }
+
+    sendData(){
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/tfteach", true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({"states": this.playerMoves}));
     }
 
     reset(paddle){
@@ -150,6 +163,9 @@ class Game {
     }
 
     update(){
+        if(this.ball.vx < 0){
+            this.playerMoves.push([this.getState(), this.leftDirection]);
+        }
         this.ball.move();
         this.updateComputerMovement(this.getState());
         this.leftPaddle.move(this.leftDirection, 0, this.canvas.height);
@@ -186,6 +202,7 @@ class Game {
             var offset = (this.ball.y - this.rightPaddle.y)/(this.rightPaddle.height/2); //ranges from -(height/2 + radius) to height/2 + radius
             var angle = maxAngle * (2/(1+Math.pow(Math.E, -offset)) - 1); // ranges from -maxAngle to maxAngle
             this.ball.setDirection(Math.PI - angle);
+            this.playerMoves = [];
             //this.ball.setVelocity(-Math.abs(this.ball.vx), this.ball.vy)
         }
     }
@@ -218,7 +235,12 @@ class Game {
 
     updateRightMovement(state){
         var pong = this
-        var url = "/tfrequest?state="+state.join(",");
+        if (this.computer=="basic-ai"){
+            var url = "/airequest?state="+state.join(",");
+        }
+        else{
+            var url = "/tfrequest?state="+state.join(",");
+        }
         fetch(url).then(function(response){
             response.text().then(function(text){
                 pong.rightDirection = parseFloat(text);
@@ -277,6 +299,20 @@ function addListeners(game){
 function updateController(){
     var dropdown = document.getElementById("controller");
     Pong.controller = (dropdown.options[dropdown.selectedIndex].value);
+}
+
+function updateComputer(){
+    var dropdown = document.getElementById("computer");
+    Pong.computer = (dropdown.options[dropdown.selectedIndex].value);
+}
+
+function postData(){
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/tfteach", true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({
+        "states": Pong.getState()
+    }));
 }
 
 

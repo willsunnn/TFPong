@@ -1,8 +1,7 @@
 from flask import Flask, render_template, request
-
+from model import Model
 
 app = Flask(__name__)
-
 
 @app.route('/')
 @app.route('/index')
@@ -38,14 +37,17 @@ def pong_ai_algorithm():
 @app.route('/tfrequest')
 def process_request():
     state = list(map(lambda s: float(s), request.args.get('state').split(",")))
-    return str(send_to_algorithm(state))
+    model = Model(prev_model=Model.checkpoint_path+"model.h5")
+    return str(model.pong_request(state))
 
 
-def send_to_algorithm(state):
-    from model import tf_pong_request
-    return tf_pong_request(state)
-
-
-@app.route('/tfteach')
+@app.route('/tfteach', methods=["POST"])
 def recieve_data():
-    pass
+    print(request.json)
+    states = request.json["states"]
+    Model.save_training_data(states)
+    return ""
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

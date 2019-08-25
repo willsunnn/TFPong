@@ -3,9 +3,14 @@
 {% block content %}
     <h1>Play Pong</h1>
     <button onclick="start()">Start</button>
+    <button onclick="postData()">Start</button>
     <select id="controller" onchange="updateController()">
       <option value="player">Player</option>
       <option value="computer">Simple Pong Algorithm</option>
+    </select>
+    <select id="computer" onchange="updateComputer()">
+      <option value="basic-ai">Simple Pong Algorithm</option>
+      <option value="tf">TensorFlow Algorithm</option>
     </select>
     <canvas id="pong" width="800" height="450"></canvas>
 
