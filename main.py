@@ -37,8 +37,8 @@ def pong_ai_algorithm():
 @app.route('/tfrequest')
 def process_request():
     state = list(map(lambda s: float(s), request.args.get('state').split(",")))
-    model = Model(prev_model=Model.checkpoint_path+"model.h5")
-    return str(model.pong_request(state))
+    model = Model.restore_model()
+    return str(model.predict(state))
 
 
 @app.route('/tfteach', methods=["POST"])
@@ -50,4 +50,4 @@ def recieve_data():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
