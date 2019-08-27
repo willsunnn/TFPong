@@ -32,6 +32,7 @@ class Model:
     def create_model():
         model = tf.keras.models.Sequential([
             keras.layers.Dense(64, input_shape=[1, 12], activation=tf.nn.relu, name=Model.input_layer_name),
+            keras.layers.Dense(64),
             keras.layers.Dense(16),
             keras.layers.Dense(3, activation=tf.nn.softmax, name=Model.output_layer_name)
         ])
@@ -81,9 +82,9 @@ class Model:
     @staticmethod
     def flip_state(state):  # flips the game as the data being trained is from the opposite paddle's perspective
         ball_x, ball_y, ball_vx, ball_vy, player_x, player_y, player_width, player_height, paddle_x, paddle_y, paddle_width, paddle_height, canvas_width, canvas_height = state
-        return [canvas_width - ball_x, ball_y, -ball_vx, ball_vy, canvas_width - paddle_x, paddle_y,
-                paddle_width, paddle_height, canvas_width - player_x, player_y, player_width, player_height,
-                canvas_width, canvas_height]
+        return [canvas_width - ball_x, canvas_height - ball_y, -ball_vx, -ball_vy, canvas_width - paddle_x,
+                canvas_height - paddle_y, paddle_width, paddle_height, canvas_width - player_x, canvas_height - player_y,
+                player_width, player_height, canvas_width, canvas_height]
 
     @staticmethod
     def preprocess_data(state):  # puts values from 0-1
