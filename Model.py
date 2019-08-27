@@ -2,15 +2,26 @@ import tensorflow as tf
 from tensorflow import keras
 import numpy as np
 import random
+from tensorflow.python.platform import gfile
 
-print(tf.__version__)
-checkpoint_path = "tf-models/"
-training_data = "tf-models/training_data.txt"
-old_training_data = "tf-models/old_training_data.txt"
+
+directory_path = "tf-models/"
+training_data = directory_path + "training_data.txt"
+old_training_data = directory_path + "old_training_data.txt"
+h5_path = directory_path + "model.h5"
+protobuf_file = directory_path + "model.pb"
+protobuf_txt_file = directory_path + "model.pbtxt"
+# checkpoint_file =
 
 
 class Model:
-    checkpoint_path = checkpoint_path
+    directory_path = directory_path
+    h5_path = h5_path
+    protobuf_file = protobuf_file
+    protobuf_txt_file = protobuf_txt_file
+
+    input_layer_name = "game_state"
+    output_layer_name = "move_layer"
 
     def __init__(self, model=None):
         if model is None:
@@ -21,18 +32,18 @@ class Model:
     @staticmethod
     def create_model():
         model = tf.keras.models.Sequential([
-            keras.layers.Dense(64, input_shape=[None, 12],activation=tf.nn.relu),
+            keras.layers.Dense(64, input_shape=[1, 12], activation=tf.nn.relu, name=Model.input_layer_name),
             keras.layers.Dense(16),
-            keras.layers.Dense(3, activation=tf.nn.softmax)
+            keras.layers.Dense(3, activation=tf.nn.softmax, name=Model.output_layer_name)
         ])
         model.compile(optimizer='adam', loss=tf.keras.losses.mean_squared_error)
         return model
 
-    def save_model(self, path=checkpoint_path+'model.h5'):
+    def save_model(self, path=h5_path):
         self.model.save(path)
 
     @staticmethod
-    def restore_model(path=checkpoint_path+'model.h5'):
+    def restore_model(path=h5_path):
         return Model(keras.models.load_model(path))
 
     def summary(self):
@@ -61,7 +72,7 @@ class Model:
                     old_data.write(str(line))
                 game_state, player_move = line.split("; ")
                 game_state = Model.preprocess_data(Model.flip_state(map(lambda x: int(x), game_state.strip("[]").split(", "))))
-                player_move = [int(player_move) + 1]        # player_move ranges from [-1,1], tf output ranges from [0,2]
+                player_move = [int(player_move) + 1]       # player_move ranges from [-1,1], tf output ranges from [0,2]
                 data.append([game_state, player_move])
         if archive_data:
             with open(training_data, 'w') as new_data:
@@ -83,20 +94,58 @@ class Model:
                 player_width / canvas_width, player_height / canvas_height, paddle_x / canvas_width,
                 paddle_y / canvas_height, paddle_width / canvas_width, paddle_height / canvas_height]]
 
-    def train_model(self):
-        data = list(model.get_training_data(archive_data=False))
+    def train_model(self, archive_data=True):
+        data = list(Model.get_training_data(archive_data=archive_data))
         random.shuffle(data)
         x_train, y_train = [], []
         for pair in data:
             x_train.append(pair[0])
             y_train.append(pair[1])
+        print(np.shape(x_train), np.shape(y_train))
         x_train = np.array(x_train).reshape(-1, 1, 12)
         y_train = np.array(y_train)
-        print(np.shape(x_train))
         history = self.model.fit(x=x_train, y=y_train, epochs=10)
+        print(history)
+
+    def freeze_graph(self):
+        # HELPER METHOD TAKEN FROM: www.dlology.com/blog/how-to-convert-trained-keras-model-to-tensorflow-and-make-prediction/
+        def freeze_session(session, keep_var_names=None, output_names=None, clear_devices=True):
+            from tensorflow.python.framework.graph_util import convert_variables_to_constants
+            graph = session.graph
+            with graph.as_default():
+                freeze_var_names = list(set(v.op.name for v in tf.global_variables()).difference(keep_var_names or []))
+                output_names = output_names or []
+                output_names += [v.op.name for v in tf.global_variables()]
+                # Convert graph to graph protobuf
+                input_graph_def = graph.as_graph_def()
+                if clear_devices:
+                    for node in input_graph_def.node:
+                        node.device = ""
+                frozen_graph = convert_variables_to_constants(session, input_graph_def, output_names, freeze_var_names)
+                return frozen_graph
+        tf.keras.backend.set_learning_phase(0)
+        graph = freeze_session(tf.keras.backend.get_session(), output_names=[out.op.name for out in self.model.outputs])
+        tf.train.write_graph(graph, Model.directory_path, 'model.pb', as_text=False)
+
+    @staticmethod
+    def predict_from_frozen(state):
+        state = np.array(Model.preprocess_data(state))
+        with tf.Session() as sess, gfile.FastGFile(Model.protobuf_file, 'rb') as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+            sess.graph.as_default()
+            g_in = tf.import_graph_def(graph_def)
+            tensor_output = sess.graph.get_tensor_by_name('import/move_layer/truediv:0')
+            tensor_input = sess.graph.get_tensor_by_name('import/game_state_input:0')
+            predictions = sess.run(tensor_output, {tensor_input: [state]})
+            return np.argmax(predictions[0][0])-1
 
 
 if __name__ == "__main__":
-    model = Model()
-    model.train_model()
-    model.save_model()
+    m = Model.restore_model()
+    try:
+        m.train_model(archive_data=True)
+    except ValueError:  # empty training data
+        pass
+    m.save_model()
+    m.freeze_graph()

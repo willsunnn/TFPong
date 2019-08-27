@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-from model import Model
+from Model import Model
 
 app = Flask(__name__)
 
@@ -37,13 +37,11 @@ def pong_ai_algorithm():
 @app.route('/tfrequest')
 def process_request():
     state = list(map(lambda s: float(s), request.args.get('state').split(",")))
-    model = Model.restore_model()
-    return str(model.predict(state))
+    return str(Model.predict_from_frozen(state))
 
 
 @app.route('/tfteach', methods=["POST"])
 def recieve_data():
-    print(request.json)
     states = request.json["states"]
     Model.save_training_data(states)
     return ""
