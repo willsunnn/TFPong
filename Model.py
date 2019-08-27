@@ -11,7 +11,6 @@ old_training_data = directory_path + "old_training_data.txt"
 h5_path = directory_path + "model.h5"
 protobuf_file = directory_path + "model.pb"
 protobuf_txt_file = directory_path + "model.pbtxt"
-# checkpoint_file =
 
 
 class Model:
@@ -101,14 +100,13 @@ class Model:
         for pair in data:
             x_train.append(pair[0])
             y_train.append(pair[1])
-        print(np.shape(x_train), np.shape(y_train))
         x_train = np.array(x_train).reshape(-1, 1, 12)
         y_train = np.array(y_train)
         history = self.model.fit(x=x_train, y=y_train, epochs=10)
         print(history)
 
     def freeze_graph(self):
-        # HELPER METHOD TAKEN FROM: www.dlology.com/blog/how-to-convert-trained-keras-model-to-tensorflow-and-make-prediction/
+        # HELPER METHOD TAKEN FROM: medium.com/@pipidog/how-to-convert-your-keras-models-to-tensorflow-e471400b886a
         def freeze_session(session, keep_var_names=None, output_names=None, clear_devices=True):
             from tensorflow.python.framework.graph_util import convert_variables_to_constants
             graph = session.graph
@@ -143,9 +141,13 @@ class Model:
 
 if __name__ == "__main__":
     m = Model.restore_model()
+    print("Model successfully restored")
     try:
         m.train_model(archive_data=True)
+        print("Model successfully trained")
     except ValueError:  # empty training data
-        pass
+        print("No new training data was found")
     m.save_model()
+    print("Model successfuly saved to /tf-models/model.h5")
     m.freeze_graph()
+    print("Model successfuly frozen to /tf-models/model.pb")
